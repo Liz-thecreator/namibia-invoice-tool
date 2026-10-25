@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Namibian Freelance Invoice & Tax Generator</title>
+  <title>Namibia Invoice Tool | Localized Freelance Generator</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @media print {
@@ -16,11 +16,38 @@
 <body class="bg-gray-100 min-h-screen text-gray-800 p-4 md:p-8">
 
   <div class="max-w-4xl mx-auto">
-    <!-- Action Header / Controls (Hidden when printing) -->
+    <!-- Top Account Header (Hidden on Print) -->
+    <div class="no-print bg-slate-900 text-white rounded-xl p-4 mb-4 flex justify-between items-center shadow-lg">
+      <div class="flex items-center gap-3">
+        <div class="bg-blue-600 text-white font-black text-lg w-10 h-10 rounded-lg flex items-center justify-center">🇳🇦</div>
+        <div>
+          <h2 class="font-bold text-sm" id="userAccountStatus">Account: Free Plan</h2>
+          <p class="text-xs text-slate-400" id="userLimitNotice">Limit: 1 invoice / 2 hrs (Max 5/day)</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2" id="authButtons">
+        <button onclick="openAuthModal('login')" class="text-xs font-semibold px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700">Log In</button>
+        <button onclick="openAuthModal('signup')" class="text-xs font-semibold px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg">Sign Up Free</button>
+      </div>
+
+      <div class="hidden flex items-center gap-3" id="loggedInView">
+        <span class="text-xs font-medium text-blue-300" id="userEmailDisplay">user@example.na</span>
+        <button onclick="logoutUser()" class="text-xs font-semibold text-slate-400 hover:text-white">Log Out</button>
+      </div>
+    </div>
+
+    <!-- Free Limit Alert Notice -->
+    <div id="limitAlert" class="no-print hidden bg-amber-500 text-slate-950 p-3 rounded-xl mb-4 text-xs font-bold flex justify-between items-center">
+      <span id="limitAlertText">⏳ Free Tier Limit Reached! Next invoice available in 1h 45m.</span>
+      <button onclick="alert('Upgrade to PRO for N$150/mo to bypass all limits!')" class="bg-slate-950 text-white px-3 py-1 rounded-lg hover:bg-slate-800 transition">Upgrade to PRO 🚀</button>
+    </div>
+
+    <!-- Main Action Toolbar -->
     <div class="no-print bg-white rounded-xl shadow-md p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
       <div>
         <h1 class="text-xl font-bold text-slate-800">Namibia Invoice & Tax Tool</h1>
-        <p class="text-sm text-gray-500">Multi-currency, client management & invoice tracking.</p>
+        <p class="text-sm text-gray-500">Multi-currency, saved client profiles & rate-limited invoicing.</p>
       </div>
       <div class="flex flex-wrap items-center gap-3">
         <!-- Currency Selector -->
@@ -35,22 +62,19 @@
           </select>
         </div>
 
-        <button onclick="saveInvoiceToHistory()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium shadow text-sm flex items-center gap-1">
+        <button onclick="handleSaveInvoice()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium shadow text-sm flex items-center gap-1">
           💾 Save Invoice
         </button>
-        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow text-sm flex items-center gap-1">
+        <button onclick="handlePrintInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow text-sm flex items-center gap-1">
           🖨️ Print / PDF
         </button>
       </div>
     </div>
 
-    <!-- Invoice Sheet -->
+    <!-- Invoice Sheet (Same clean design) -->
     <div class="invoice-container bg-white rounded-xl shadow-xl p-8 md:p-12 border border-gray-200">
-      
-      <!-- Top Section / Branding & Logo -->
       <div class="flex flex-col md:flex-row justify-between border-b pb-6 mb-6 gap-6">
         <div class="flex items-start gap-4">
-          <!-- Logo Upload Box -->
           <div class="no-print relative group w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center bg-gray-50 overflow-hidden cursor-pointer hover:border-blue-500">
             <input type="file" id="logoInput" accept="image/*" onchange="loadLogo(event)" class="absolute inset-0 opacity-0 cursor-pointer">
             <div id="logoPlaceholder" class="text-center p-1">
@@ -60,9 +84,9 @@
           </div>
           
           <div class="flex-1">
-            <input type="text" id="bizName" placeholder="Your Business / Your Name" class="text-2xl font-bold text-gray-900 border-b border-dashed border-gray-300 focus:border-blue-500 outline-none w-full mb-1" value="Windhoek Creative Agency">
-            <input type="text" id="bizAddress" placeholder="Your Address / Location (e.g. Klein Windhoek)" class="text-sm text-gray-600 border-b border-dashed border-gray-200 outline-none w-full mb-1" value="Sam Nujoma Drive, Windhoek, Namibia">
-            <input type="text" id="bizContact" placeholder="Email / Phone Number" class="text-sm text-gray-600 border-b border-dashed border-gray-200 outline-none w-full" value="hello@creative.na | +264 81 123 4567">
+            <input type="text" id="bizName" class="text-2xl font-bold text-gray-900 border-b border-dashed border-gray-300 focus:border-blue-500 outline-none w-full mb-1" value="Windhoek Creative Agency">
+            <input type="text" id="bizAddress" class="text-sm text-gray-600 border-b border-dashed border-gray-200 outline-none w-full mb-1" value="Sam Nujoma Drive, Windhoek, Namibia">
+            <input type="text" id="bizContact" class="text-sm text-gray-600 border-b border-dashed border-gray-200 outline-none w-full" value="hello@creative.na | +264 81 123 4567">
           </div>
         </div>
 
@@ -89,7 +113,7 @@
         </div>
       </div>
 
-      <!-- Bill To Section & Client Preset Selector -->
+      <!-- Bill To Section -->
       <div class="mb-8">
         <div class="flex justify-between items-center mb-2">
           <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Billed To</h3>
@@ -117,9 +141,7 @@
               <th class="py-3 px-2 w-10 no-print"></th>
             </tr>
           </thead>
-          <tbody id="itemsBody">
-            <!-- Dynamic rows inserted via JavaScript -->
-          </tbody>
+          <tbody id="itemsBody"></tbody>
         </table>
         
         <button onclick="addItem()" class="no-print mt-3 text-sm font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1">
@@ -127,10 +149,8 @@
         </button>
       </div>
 
-      <!-- Totals & Banking Details -->
+      <!-- Totals & Banking -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-6">
-        
-        <!-- Banking / Payment Details -->
         <div class="space-y-3">
           <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Payment / EFT Details</h4>
           <div class="p-3 bg-gray-50 rounded-lg text-sm space-y-1.5 border">
@@ -141,37 +161,33 @@
           </div>
         </div>
 
-        <!-- Calculations -->
         <div class="space-y-2 text-right text-sm">
           <div class="flex justify-between text-gray-600">
             <span>Subtotal:</span>
             <span class="font-semibold" id="subtotalDisplay">N$ 0.00</span>
           </div>
-
           <div class="flex justify-between items-center text-gray-600">
             <label class="inline-flex items-center cursor-pointer">
-              <input type="checkbox" id="vatToggle" onchange="calculateTotals()" class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500">
+              <input type="checkbox" id="vatToggle" onchange="calculateTotals()" class="rounded border-gray-300 text-blue-600 shadow-sm">
               <span class="ml-2 text-xs font-medium text-gray-600">Add 15% VAT</span>
             </label>
             <span class="font-semibold" id="vatDisplay">N$ 0.00</span>
           </div>
-
           <div class="flex justify-between text-lg font-bold text-gray-900 border-t border-b py-2 my-2">
             <span>Total Due:</span>
             <span class="text-blue-600" id="grandTotalDisplay">N$ 0.00</span>
           </div>
         </div>
       </div>
-
     </div>
 
-    <!-- Local Tax Estimator Widget (Hidden during Print) -->
+    <!-- Tax Estimator -->
     <div class="no-print mt-6 bg-slate-900 text-white rounded-xl shadow-lg p-6">
       <div class="flex justify-between items-center mb-3">
         <h3 class="font-bold text-base text-blue-400">🇳🇦 Namibian Freelance Tax Estimator</h3>
         <span class="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded">Estimated Calculation</span>
       </div>
-      <p class="text-xs text-slate-400 mb-4">In Namibia, individual tax rates are zero on net income up to N$50,000 per year. Here is your estimated tax obligation based on this invoice amount:</p>
+      <p class="text-xs text-slate-400 mb-4">Namibian individual tax rate estimates based on net freelance income:</p>
       
       <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
         <div class="bg-slate-800 p-3 rounded-lg">
@@ -189,7 +205,7 @@
       </div>
     </div>
 
-    <!-- Invoice History Log (Hidden during Print) -->
+    <!-- Saved Invoice History Table -->
     <div class="no-print mt-6 bg-white rounded-xl shadow-md p-6 border border-gray-200">
       <h3 class="font-bold text-base text-slate-800 mb-3 flex items-center justify-between">
         <span>📋 Saved Invoice History</span>
@@ -212,7 +228,30 @@
         </table>
       </div>
     </div>
+  </div>
 
+  <!-- AUTH MODAL (Sign Up / Log In) -->
+  <div id="authModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+      <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 font-bold">✕</button>
+      <h3 class="text-xl font-bold text-slate-900 mb-1" id="authModalTitle">Log In to Your Account</h3>
+      <p class="text-xs text-gray-500 mb-4">Save your invoice history and settings across sessions.</p>
+      
+      <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Email Address</label>
+          <input type="email" id="authEmail" required placeholder="you@example.na" class="w-full border rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Password</label>
+          <input type="password" id="authPassword" required placeholder="••••••••" class="w-full border rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg text-sm shadow">
+          Continue
+        </button>
+      </form>
+    </div>
   </div>
 
   <script>
@@ -223,19 +262,29 @@
       { description: "Website Development & UI/UX Design", qty: 1, rate: 8500 },
       { description: "Social Media Strategy & Content Creation", qty: 1, rate: 3500 }
     ];
-    let savedLogoData = "";
     let clientsList = [];
     let invoiceHistory = [];
+    let currentUser = null;
+
+    // Rate Limiting Config
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+    const MAX_DAILY_INVOICES = 5;
 
     window.onload = function() {
-      // Load saved clients
+      // Check active user login
+      const savedUser = localStorage.getItem('namibia_app_user');
+      if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        updateUserUI();
+      }
+
+      // Load client presets & history
       const savedClients = localStorage.getItem('namibia_clients');
       if (savedClients) {
         clientsList = JSON.parse(savedClients);
         renderClientDropdown();
       }
 
-      // Load saved invoice history
       const savedHistory = localStorage.getItem('namibia_invoice_history');
       if (savedHistory) {
         invoiceHistory = JSON.parse(savedHistory);
@@ -243,8 +292,124 @@
       }
 
       renderItems();
+      checkRateLimits();
     };
 
+    // --- AUTHENTICATION LOGIC ---
+    function openAuthModal(mode) {
+      document.getElementById('authModalTitle').innerText = mode === 'signup' ? 'Create a Free Account' : 'Log In to Your Account';
+      document.getElementById('authModal').classList.remove('hidden');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModal').classList.add('hidden');
+    }
+
+    function handleAuthSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('authEmail').value;
+      currentUser = { email: email, isPro: false };
+      localStorage.setItem('namibia_app_user', JSON.stringify(currentUser));
+      updateUserUI();
+      closeAuthModal();
+      alert(`Welcome back, ${email}! Your session is active.`);
+    }
+
+    function logoutUser() {
+      currentUser = null;
+      localStorage.removeItem('namibia_app_user');
+      updateUserUI();
+    }
+
+    function updateUserUI() {
+      if (currentUser) {
+        document.getElementById('authButtons').classList.add('hidden');
+        document.getElementById('loggedInView').classList.remove('hidden');
+        document.getElementById('userEmailDisplay').innerText = currentUser.email;
+        document.getElementById('userAccountStatus').innerText = currentUser.isPro ? 'Account: PRO Member 🚀' : 'Account: Free Tier';
+      } else {
+        document.getElementById('authButtons').classList.remove('hidden');
+        document.getElementById('loggedInView').classList.add('hidden');
+        document.getElementById('userAccountStatus').innerText = 'Account: Free Plan';
+      }
+    }
+
+    // --- RATE LIMIT CHECKER (1 / 2 hrs & 5 / day) ---
+    function getUsageData() {
+      const data = localStorage.getItem('namibia_usage_tracker');
+      return data ? JSON.parse(data) : { lastCreatedTime: 0, dailyCount: 0, lastResetDay: new Date().toDateString() };
+    }
+
+    function checkRateLimits() {
+      if (currentUser && currentUser.isPro) return true; // PRO users bypass all limits
+
+      let usage = getUsageData();
+      const now = Date.now();
+      const today = new Date().toDateString();
+
+      // Reset daily counter if a new day
+      if (usage.lastResetDay !== today) {
+        usage.dailyCount = 0;
+        usage.lastResetDay = today;
+        localStorage.setItem('namibia_usage_tracker', JSON.stringify(usage));
+      }
+
+      // 1. Check Daily Limit (Max 5 per day)
+      if (usage.dailyCount >= MAX_DAILY_INVOICES) {
+        showLimitAlert(`🚫 Daily Limit Reached (${MAX_DAILY_INVOICES}/5 today). Upgrade to PRO for unlimited invoices!`);
+        return false;
+      }
+
+      // 2. Check 2-Hour Interval Limit
+      const timePassed = now - usage.lastCreatedTime;
+      if (usage.lastCreatedTime && timePassed < TWO_HOURS_MS) {
+        const remainingMinutes = Math.ceil((TWO_HOURS_MS - timePassed) / (1000 * 60));
+        showLimitAlert(`⏳ Free limit active: 1 invoice every 2 hours. Next available in ${remainingMinutes} mins.`);
+        return false;
+      }
+
+      hideLimitAlert();
+      return true;
+    }
+
+    function recordInvoiceCreation() {
+      if (currentUser && currentUser.isPro) return;
+
+      let usage = getUsageData();
+      usage.lastCreatedTime = Date.now();
+      usage.dailyCount += 1;
+      localStorage.setItem('namibia_usage_tracker', JSON.stringify(usage));
+      checkRateLimits();
+    }
+
+    function showLimitAlert(msg) {
+      document.getElementById('limitAlertText').innerText = msg;
+      document.getElementById('limitAlert').classList.remove('hidden');
+    }
+
+    function hideLimitAlert() {
+      document.getElementById('limitAlert').classList.add('hidden');
+    }
+
+    function handleSaveInvoice() {
+      if (!checkRateLimits()) {
+        alert("Free limit reached! You can generate 1 invoice every 2 hours (max 5/day). Upgrade to PRO for unlimited access.");
+        return;
+      }
+      saveInvoiceToHistory();
+      recordInvoiceCreation();
+    }
+
+    function handlePrintInvoice() {
+      if (!checkRateLimits()) {
+        alert("Free limit reached! You can generate 1 invoice every 2 hours (max 5/day). Upgrade to PRO for unlimited access.");
+        return;
+      }
+      recordInvoiceCreation();
+      window.print();
+    }
+
+    // --- CURRENCY & INVOICE RENDER ---
     function updateCurrency() {
       currentCurrency = document.getElementById('currencySelect').value;
       document.querySelectorAll('.currSym').forEach(el => el.innerText = currentCurrency);
@@ -256,8 +421,7 @@
       if (file) {
         const reader = new FileReader();
         reader.onload = function(e) {
-          savedLogoData = e.target.result;
-          document.getElementById('logoPreview').src = savedLogoData;
+          document.getElementById('logoPreview').src = e.target.result;
           document.getElementById('logoPreview').classList.remove('hidden');
           document.getElementById('logoPlaceholder').classList.add('hidden');
         }
@@ -270,14 +434,11 @@
       const address = document.getElementById('clientAddress').value.trim();
       const tin = document.getElementById('clientTin').value.trim();
 
-      if (!name) return alert('Please enter a client name first.');
+      if (!name) return alert('Please enter a client name.');
 
       const existingIndex = clientsList.findIndex(c => c.name.toLowerCase() === name.toLowerCase());
-      if (existingIndex >= 0) {
-        clientsList[existingIndex] = { name, address, tin };
-      } else {
-        clientsList.push({ name, address, tin });
-      }
+      if (existingIndex >= 0) clientsList[existingIndex] = { name, address, tin };
+      else clientsList.push({ name, address, tin });
 
       localStorage.setItem('namibia_clients', JSON.stringify(clientsList));
       renderClientDropdown();
@@ -318,11 +479,8 @@
       const record = { invNo, client, date, total, currency: currentCurrency, status };
 
       const existingIdx = invoiceHistory.findIndex(h => h.invNo === invNo);
-      if (existingIdx >= 0) {
-        invoiceHistory[existingIdx] = record;
-      } else {
-        invoiceHistory.unshift(record);
-      }
+      if (existingIdx >= 0) invoiceHistory[existingIdx] = record;
+      else invoiceHistory.unshift(record);
 
       localStorage.setItem('namibia_invoice_history', JSON.stringify(invoiceHistory));
       renderHistoryTable();
@@ -353,7 +511,7 @@
     }
 
     function clearHistory() {
-      if (confirm("Are you sure you want to clear invoice history?")) {
+      if (confirm("Clear saved invoice history?")) {
         invoiceHistory = [];
         localStorage.removeItem('namibia_invoice_history');
         renderHistoryTable();
