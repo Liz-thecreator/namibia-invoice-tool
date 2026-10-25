@@ -5,6 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Namibia Invoice Tool | Localized Freelance Generator</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- EmailJS SDK -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script type="text/javascript">
+    (function(){
+      // ⚠️ REPLACE WITH YOUR ACTUAL EMAILJS PUBLIC KEY
+      emailjs.init({
+        publicKey: "YOUR_PUBLIC_KEY", 
+      });
+    })();
+  </script>
+
   <style>
     @media print {
       .no-print { display: none !important; }
@@ -47,7 +59,7 @@
     <div class="no-print bg-white rounded-xl shadow-md p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
       <div>
         <h1 class="text-xl font-bold text-slate-800">Namibia Invoice & Tax Tool</h1>
-        <p class="text-sm text-gray-500">Multi-currency, saved client profiles & rate-limited invoicing.</p>
+        <p class="text-sm text-gray-500">Multi-currency, email receipts & rate-limited invoicing.</p>
       </div>
       <div class="flex flex-wrap items-center gap-3">
         <!-- Currency Selector -->
@@ -63,7 +75,7 @@
         </div>
 
         <button onclick="handleSaveInvoice()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium shadow text-sm flex items-center gap-1">
-          💾 Save Invoice
+          💾 Save & Email
         </button>
         <button onclick="handlePrintInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow text-sm flex items-center gap-1">
           🖨️ Print / PDF
@@ -71,7 +83,7 @@
       </div>
     </div>
 
-    <!-- Invoice Sheet (Same clean design) -->
+    <!-- Invoice Sheet -->
     <div class="invoice-container bg-white rounded-xl shadow-xl p-8 md:p-12 border border-gray-200">
       <div class="flex flex-col md:flex-row justify-between border-b pb-6 mb-6 gap-6">
         <div class="flex items-start gap-4">
@@ -230,12 +242,12 @@
     </div>
   </div>
 
-  <!-- AUTH MODAL (Sign Up / Log In) -->
+  <!-- AUTH MODAL -->
   <div id="authModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
       <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 font-bold">✕</button>
       <h3 class="text-xl font-bold text-slate-900 mb-1" id="authModalTitle">Log In to Your Account</h3>
-      <p class="text-xs text-gray-500 mb-4">Save your invoice history and settings across sessions.</p>
+      <p class="text-xs text-gray-500 mb-4">Save your invoice history and email receipts to your inbox.</p>
       
       <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
         <div>
@@ -266,19 +278,17 @@
     let invoiceHistory = [];
     let currentUser = null;
 
-    // Rate Limiting Config
+    // Rate Limiting Configuration
     const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
     const MAX_DAILY_INVOICES = 5;
 
     window.onload = function() {
-      // Check active user login
       const savedUser = localStorage.getItem('namibia_app_user');
       if (savedUser) {
         currentUser = JSON.parse(savedUser);
         updateUserUI();
       }
 
-      // Load client presets & history
       const savedClients = localStorage.getItem('namibia_clients');
       if (savedClients) {
         clientsList = JSON.parse(savedClients);
@@ -295,7 +305,7 @@
       checkRateLimits();
     };
 
-    // --- AUTHENTICATION LOGIC ---
+    // --- AUTH LOGIC ---
     function openAuthModal(mode) {
       document.getElementById('authModalTitle').innerText = mode === 'signup' ? 'Create a Free Account' : 'Log In to Your Account';
       document.getElementById('authModal').classList.remove('hidden');
@@ -312,7 +322,7 @@
       localStorage.setItem('namibia_app_user', JSON.stringify(currentUser));
       updateUserUI();
       closeAuthModal();
-      alert(`Welcome back, ${email}! Your session is active.`);
+      alert(`Welcome back, ${email}! Your account is active.`);
     }
 
     function logoutUser() {
@@ -334,33 +344,30 @@
       }
     }
 
-    // --- RATE LIMIT CHECKER (1 / 2 hrs & 5 / day) ---
+    // --- RATE LIMITING ---
     function getUsageData() {
       const data = localStorage.getItem('namibia_usage_tracker');
       return data ? JSON.parse(data) : { lastCreatedTime: 0, dailyCount: 0, lastResetDay: new Date().toDateString() };
     }
 
     function checkRateLimits() {
-      if (currentUser && currentUser.isPro) return true; // PRO users bypass all limits
+      if (currentUser && currentUser.isPro) return true;
 
       let usage = getUsageData();
       const now = Date.now();
       const today = new Date().toDateString();
 
-      // Reset daily counter if a new day
       if (usage.lastResetDay !== today) {
         usage.dailyCount = 0;
         usage.lastResetDay = today;
         localStorage.setItem('namibia_usage_tracker', JSON.stringify(usage));
       }
 
-      // 1. Check Daily Limit (Max 5 per day)
       if (usage.dailyCount >= MAX_DAILY_INVOICES) {
         showLimitAlert(`🚫 Daily Limit Reached (${MAX_DAILY_INVOICES}/5 today). Upgrade to PRO for unlimited invoices!`);
         return false;
       }
 
-      // 2. Check 2-Hour Interval Limit
       const timePassed = now - usage.lastCreatedTime;
       if (usage.lastCreatedTime && timePassed < TWO_HOURS_MS) {
         const remainingMinutes = Math.ceil((TWO_HOURS_MS - timePassed) / (1000 * 60));
@@ -391,13 +398,40 @@
       document.getElementById('limitAlert').classList.add('hidden');
     }
 
+    // --- EMAIL RECEIPT SENDER ---
+    function sendEmailReceipt(invoiceData) {
+      if (!currentUser || !currentUser.email) {
+        alert(`Invoice saved! Log in with your email to receive automatic email receipts.`);
+        return;
+      }
+
+      const templateParams = {
+        to_email: currentUser.email,
+        invoice_no: invoiceData.invNo,
+        client_name: invoiceData.client,
+        total_amount: `${invoiceData.currency} ${invoiceData.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+        invoice_date: invoiceData.date
+      };
+
+      // ⚠️ REPLACE WITH YOUR ACTUAL SERVICE_ID AND TEMPLATE_ID
+      emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams)
+        .then(function(response) {
+           console.log('EMAIL SUCCESS!', response.status, response.text);
+           alert(`Invoice saved & email receipt sent to ${currentUser.email}!`);
+        }, function(error) {
+           console.log('EMAIL FAILED...', error);
+           alert(`Invoice saved locally, but email dispatch failed. Check your EmailJS setup.`);
+        });
+    }
+
     function handleSaveInvoice() {
       if (!checkRateLimits()) {
         alert("Free limit reached! You can generate 1 invoice every 2 hours (max 5/day). Upgrade to PRO for unlimited access.");
         return;
       }
-      saveInvoiceToHistory();
+      const invoiceData = saveInvoiceToHistory();
       recordInvoiceCreation();
+      if (invoiceData) sendEmailReceipt(invoiceData);
     }
 
     function handlePrintInvoice() {
@@ -409,7 +443,7 @@
       window.print();
     }
 
-    // --- CURRENCY & INVOICE RENDER ---
+    // --- CURRENCY & RENDER LOGIC ---
     function updateCurrency() {
       currentCurrency = document.getElementById('currencySelect').value;
       document.querySelectorAll('.currSym').forEach(el => el.innerText = currentCurrency);
@@ -484,7 +518,7 @@
 
       localStorage.setItem('namibia_invoice_history', JSON.stringify(invoiceHistory));
       renderHistoryTable();
-      alert(`Invoice ${invNo} saved to history!`);
+      return record;
     }
 
     function renderHistoryTable() {
@@ -498,95 +532,4 @@
       invoiceHistory.forEach(item => {
         let statusBadge = item.status === 'Paid' ? 'bg-green-100 text-green-700' : (item.status === 'Sent' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600');
         const row = document.createElement('tr');
-        row.className = 'border-b hover:bg-gray-50';
-        row.innerHTML = `
-          <td class="py-2.5 font-mono font-medium">${item.invNo}</td>
-          <td class="py-2.5">${item.client}</td>
-          <td class="py-2.5 text-gray-500">${item.date}</td>
-          <td class="py-2.5 text-right font-mono font-semibold">${item.currency} ${item.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-          <td class="py-2.5 text-center"><span class="px-2 py-0.5 rounded text-xs font-semibold ${statusBadge}">${item.status}</span></td>
-        `;
-        tbody.appendChild(row);
-      });
-    }
-
-    function clearHistory() {
-      if (confirm("Clear saved invoice history?")) {
-        invoiceHistory = [];
-        localStorage.removeItem('namibia_invoice_history');
-        renderHistoryTable();
-      }
-    }
-
-    function renderItems() {
-      const tbody = document.getElementById('itemsBody');
-      tbody.innerHTML = '';
-
-      items.forEach((item, index) => {
-        const row = document.createElement('tr');
-        row.className = 'border-b border-gray-100';
-        row.innerHTML = `
-          <td class="py-2 px-2">
-            <input type="text" value="${item.description}" onchange="updateItem(${index}, 'description', this.value)" class="w-full outline-none border-b border-transparent hover:border-gray-300 focus:border-blue-500 text-sm">
-          </td>
-          <td class="py-2 px-2 text-center">
-            <input type="number" min="1" value="${item.qty}" onchange="updateItem(${index}, 'qty', this.value)" class="w-16 text-center outline-none border-b border-transparent hover:border-gray-300 focus:border-blue-500 text-sm">
-          </td>
-          <td class="py-2 px-2 text-right">
-            <input type="number" min="0" value="${item.rate}" onchange="updateItem(${index}, 'rate', this.value)" class="w-28 text-right outline-none border-b border-transparent hover:border-gray-300 focus:border-blue-500 text-sm font-mono">
-          </td>
-          <td class="py-2 px-2 text-right font-mono text-sm font-medium">
-            ${currentCurrency} ${(item.qty * item.rate).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-          </td>
-          <td class="py-2 px-2 text-center no-print">
-            <button onclick="removeItem(${index})" class="text-red-500 hover:text-red-700 font-bold text-xs">✕</button>
-          </td>
-        `;
-        tbody.appendChild(row);
-      });
-
-      calculateTotals();
-    }
-
-    function addItem() {
-      items.push({ description: "New Service Item", qty: 1, rate: 1000 });
-      renderItems();
-    }
-
-    function removeItem(index) {
-      if (items.length > 1) {
-        items.splice(index, 1);
-        renderItems();
-      }
-    }
-
-    function updateItem(index, field, value) {
-      if (field === 'qty' || field === 'rate') {
-        items[index][field] = parseFloat(value) || 0;
-      } else {
-        items[index][field] = value;
-      }
-      renderItems();
-    }
-
-    function calculateTotals() {
-      let subtotal = items.reduce((sum, item) => sum + (item.qty * item.rate), 0);
-      let isVat = document.getElementById('vatToggle').checked;
-      let vatAmount = isVat ? subtotal * 0.15 : 0;
-      let grandTotal = subtotal + vatAmount;
-
-      document.getElementById('subtotalDisplay').innerText = `${currentCurrency} ${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-      document.getElementById('vatDisplay').innerText = `${currentCurrency} ${vatAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-      document.getElementById('grandTotalDisplay').innerText = `${currentCurrency} ${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-
-      document.getElementById('taxCalcGross').innerText = `${currentCurrency} ${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-      
-      let estimatedTaxRate = subtotal > 10000 ? 0.18 : 0.00;
-      let taxSetAside = subtotal * estimatedTaxRate;
-      
-      document.getElementById('taxBracketDisplay').innerText = subtotal > 10000 ? "18% Bracket" : "Exempt / Low";
-      document.getElementById('taxSetAsideDisplay').innerText = `${currentCurrency} ${taxSetAside.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-    }
-  </script>
-</body>
-</html>
+        row.className
