@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Namibian Freelance Invoice & Tax Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; font-size: 12pt; }
+      .invoice-container { box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800 p-4 md:p-8">
+
+  <div class="max-w-4xl mx-auto">
+    <!-- Action Header / Controls (Hidden when printing) -->
+    <div class="no-print bg-white rounded-xl shadow-md p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h1 class="text-xl font-bold text-slate-800">Namibia Invoice & Tax Tool</h1>
+        <p class="text-sm text-gray-500">Multi-currency, client management & invoice tracking.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Currency Selector -->
+        <div class="flex items-center gap-1.5 bg-gray-100 p-1.5 rounded-lg border">
+          <span class="text-xs font-semibold text-gray-500 pl-1">Currency:</span>
+          <select id="currencySelect" onchange="updateCurrency()" class="bg-white border rounded px-2 py-1 text-xs font-bold text-gray-700 outline-none">
+            <option value="N$">N$ (NAD)</option>
+            <option value="R">R (ZAR)</option>
+            <option value="$">$ (USD)</option>
+            <option value="€">€ (EUR)</option>
+            <option value="£">£ (GBP)</option>
+          </select>
+        </div>
+
+        <button onclick="saveInvoiceToHistory()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium shadow text-sm flex items-center gap-1">
+          💾 Save Invoice
+        </button>
+        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow text-sm flex items-center gap-1">
+          🖨️ Print / PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- Invoice Sheet -->
+    <div class="invoice-container bg-white rounded-xl shadow-xl p-8 md:p-12 border border-gray-200">
+      
+      <!-- Top Section / Branding & Logo -->
+      <div class="flex flex-col md:flex-row justify-between border-b pb-6 mb-6 gap-6">
+        <div class="flex items-start gap-4">
+          <!-- Logo Upload Box -->
+          <div class="no-print relative group w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center bg-gray-50 overflow-hidden cursor-pointer hover:border-blue-500">
+            <input type="file" id="logoInput" accept="image/*" onchange="loadLogo(event)" class="absolute inset-0 opacity-0 cursor-pointer">
+            <div id="logoPlaceholder" class="text-center p-1">
+              <span class="text-xs text-gray-400 font-semibold block">Add Logo</span>
+            </div>
+            <img id="logoPreview" class="hidden w-full h-full object-contain">
+          </div>
+          
+          <div class="flex-1">
+            <input type="text" id="bizName" placeholder="Your Business / Your Name" class="text-2xl font-bold text-gray-900 border-b border-dashed border-gray-300 focus:border-blue-500 outline-none w-full mb-1" value="Windhoek Creative Agency">
+            <input type="text" id="bizAddress" placeholder="Your Address / Location (e.g. Klein Windhoek)" class="text-sm text-gray-600 border-b border-dashed border-gray-200 outline-none w-full mb-1" value="Sam Nujoma Drive, Windhoek, Namibia">
+            <input type="text" id="bizContact" placeholder="Email / Phone Number" class="text-sm text-gray-600 border-b border-dashed border-gray-200 outline-none w-full" value="hello@creative.na | +264 81 123 4567">
+          </div>
+        </div>
+
+        <div class="text-right">
+          <h2 class="text-3xl font-black text-gray-800 tracking-wide uppercase">INVOICE</h2>
+          <div class="mt-2 text-sm text-gray-500 space-y-1">
+            <div class="flex justify-between md:justify-end gap-2">
+              <span class="font-semibold">Invoice No:</span>
+              <input type="text" id="invNo" value="INV-2026-001" class="w-28 text-right font-mono border-b border-dashed border-gray-300 outline-none">
+            </div>
+            <div class="flex justify-between md:justify-end gap-2">
+              <span class="font-semibold">Date:</span>
+              <input type="date" id="invoiceDate" class="w-32 text-right border-b border-dashed border-gray-300 outline-none">
+            </div>
+            <div class="flex justify-between md:justify-end gap-2 items-center">
+              <span class="font-semibold">Status:</span>
+              <select id="invStatus" class="w-28 text-right font-semibold text-xs border rounded px-1 py-0.5 outline-none bg-gray-50">
+                <option value="Draft">Draft</option>
+                <option value="Sent">Sent</option>
+                <option value="Paid">Paid</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bill To Section & Client Preset Selector -->
+      <div class="mb-8">
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Billed To</h3>
+          <div class="no-print flex items-center gap-2">
+            <select id="clientPresetSelect" onchange="loadSelectedClient()" class="text-xs border rounded px-2 py-1 bg-gray-50 text-gray-600 outline-none">
+              <option value="">-- Load Saved Client --</option>
+            </select>
+            <button onclick="saveCurrentClient()" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded font-medium">Save Client</button>
+          </div>
+        </div>
+        <input type="text" id="clientName" placeholder="Client Name / Company" class="text-lg font-semibold text-gray-800 border-b border-dashed border-gray-300 outline-none w-full mb-1" value="Namibia Development Corp">
+        <input type="text" id="clientAddress" placeholder="Client Address / City" class="text-sm text-gray-600 border-b border-dashed border-gray-200 outline-none w-full mb-1" value="Independence Avenue, Windhoek">
+        <input type="text" id="clientTin" placeholder="Tax TIN / VAT Number (Optional)" class="text-sm text-gray-600 border-b border-dashed border-gray-200 outline-none w-full" value="TIN: 9991234-01-5">
+      </div>
+
+      <!-- Line Items Table -->
+      <div class="mb-6 overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b-2 border-gray-200 text-xs font-bold text-gray-500 uppercase tracking-wider">
+              <th class="py-3 px-2">Description</th>
+              <th class="py-3 px-2 w-20 text-center">Qty</th>
+              <th class="py-3 px-2 w-32 text-right">Rate (<span class="currSym">N$</span>)</th>
+              <th class="py-3 px-2 w-32 text-right">Amount (<span class="currSym">N$</span>)</th>
+              <th class="py-3 px-2 w-10 no-print"></th>
+            </tr>
+          </thead>
+          <tbody id="itemsBody">
+            <!-- Dynamic rows inserted via JavaScript -->
+          </tbody>
+        </table>
+        
+        <button onclick="addItem()" class="no-print mt-3 text-sm font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+          ➕ Add Line Item
+        </button>
+      </div>
+
+      <!-- Totals & Banking Details -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-6">
+        
+        <!-- Banking / Payment Details -->
+        <div class="space-y-3">
+          <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Payment / EFT Details</h4>
+          <div class="p-3 bg-gray-50 rounded-lg text-sm space-y-1.5 border">
+            <div><span class="font-semibold text-gray-700">Bank:</span> <input type="text" id="bankName" value="Bank Windhoek" class="bg-transparent border-b border-dashed border-gray-300 outline-none w-40"></div>
+            <div><span class="font-semibold text-gray-700">Account Name:</span> <input type="text" id="bankAccName" value="Windhoek Creative Agency" class="bg-transparent border-b border-dashed border-gray-300 outline-none w-48"></div>
+            <div><span class="font-semibold text-gray-700">Account No:</span> <input type="text" id="bankAccNo" value="8001234567" class="bg-transparent border-b border-dashed border-gray-300 outline-none font-mono"></div>
+            <div><span class="font-semibold text-gray-700">Branch Code:</span> <input type="text" id="bankBranch" value="481-972 (Kudu Branch)" class="bg-transparent border-b border-dashed border-gray-300 outline-none"></div>
+          </div>
+        </div>
+
+        <!-- Calculations -->
+        <div class="space-y-2 text-right text-sm">
+          <div class="flex justify-between text-gray-600">
+            <span>Subtotal:</span>
+            <span class="font-semibold" id="subtotalDisplay">N$ 0.00</span>
+          </div>
+
+          <div class="flex justify-between items-center text-gray-600">
+            <label class="inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="vatToggle" onchange="calculateTotals()" class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500">
+              <span class="ml-2 text-xs font-medium text-gray-600">Add 15% VAT</span>
+            </label>
+            <span class="font-semibold" id="vatDisplay">N$ 0.00</span>
+          </div>
+
+          <div class="flex justify-between text-lg font-bold text-gray-900 border-t border-b py-2 my-2">
+            <span>Total Due:</span>
+            <span class="text-blue-600" id="grandTotalDisplay">N$ 0.00</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Local Tax Estimator Widget (Hidden during Print) -->
+    <div class="no-print mt-6 bg-slate-900 text-white rounded-xl shadow-lg p-6">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="font-bold text-base text-blue-400">🇳🇦 Namibian Freelance Tax Estimator</h3>
+        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded">Estimated Calculation</span>
+      </div>
+      <p class="text-xs text-slate-400 mb-4">In Namibia, individual tax rates are zero on net income up to N$50,000 per year. Here is your estimated tax obligation based on this invoice amount:</p>
+      
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
+        <div class="bg-slate-800 p-3 rounded-lg">
+          <span class="text-xs text-slate-400 block">Invoice Value</span>
+          <span class="text-lg font-semibold text-white" id="taxCalcGross">N$ 0.00</span>
+        </div>
+        <div class="bg-slate-800 p-3 rounded-lg">
+          <span class="text-xs text-slate-400 block">Est. Income Tax Bracket</span>
+          <span class="text-lg font-semibold text-amber-400" id="taxBracketDisplay">0% - 18%</span>
+        </div>
+        <div class="bg-slate-800 p-3 rounded-lg col-span-2 md:col-span-1">
+          <span class="text-xs text-slate-400 block">Est. Tax to Set Aside</span>
+          <span class="text-lg font-bold text-green-400" id="taxSetAsideDisplay">N$ 0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invoice History Log (Hidden during Print) -->
+    <div class="no-print mt-6 bg-white rounded-xl shadow-md p-6 border border-gray-200">
+      <h3 class="font-bold text-base text-slate-800 mb-3 flex items-center justify-between">
+        <span>📋 Saved Invoice History</span>
+        <button onclick="clearHistory()" class="text-xs font-normal text-red-500 hover:underline">Clear History</button>
+      </h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm border-collapse">
+          <thead>
+            <tr class="border-b text-xs font-semibold text-gray-500 uppercase">
+              <th class="py-2">Invoice #</th>
+              <th class="py-2">Client</th>
+              <th class="py-2">Date</th>
+              <th class="py-2 text-right">Amount</th>
+              <th class="py-2 text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody">
+            <tr><td colspan="5" class="py-3 text-center text-gray-400 text-xs">No saved invoices yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    document.getElementById('invoiceDate').valueAsDate = new Date();
+
+    let currentCurrency = "N$";
+    let items = [
+      { description: "Website Development & UI/UX Design", qty: 1, rate: 8500 },
+      { description: "Social Media Strategy & Content Creation", qty: 1, rate: 3500 }
+    ];
+    let savedLogoData = "";
+    let clientsList = [];
+    let invoiceHistory = [];
+
+    window.onload = function() {
+      // Load saved clients
+      const savedClients = localStorage.getItem('namibia_clients');
+      if (savedClients) {
+        clientsList = JSON.parse(savedClients);
+        renderClientDropdown();
+      }
+
+      // Load saved invoice history
+      const savedHistory = localStorage.getItem('namibia_invoice_history');
+      if (savedHistory) {
+        invoiceHistory = JSON.parse(savedHistory);
+        renderHistoryTable();
+      }
+
+      renderItems();
+    };
+
+    function updateCurrency() {
+      currentCurrency = document.getElementById('currencySelect').value;
+      document.querySelectorAll('.currSym').forEach(el => el.innerText = currentCurrency);
+      calculateTotals();
+    }
+
+    function loadLogo(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          savedLogoData = e.target.result;
+          document.getElementById('logoPreview').src = savedLogoData;
+          document.getElementById('logoPreview').classList.remove('hidden');
+          document.getElementById('logoPlaceholder').classList.add('hidden');
+        }
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function saveCurrentClient() {
+      const name = document.getElementById('clientName').value.trim();
+      const address = document.getElementById('clientAddress').value.trim();
+      const tin = document.getElementById('clientTin').value.trim();
+
+      if (!name) return alert('Please enter a client name first.');
+
+      const existingIndex = clientsList.findIndex(c => c.name.toLowerCase() === name.toLowerCase());
+      if (existingIndex >= 0) {
+        clientsList[existingIndex] = { name, address, tin };
+      } else {
+        clientsList.push({ name, address, tin });
+      }
+
+      localStorage.setItem('namibia_clients', JSON.stringify(clientsList));
+      renderClientDropdown();
+      alert(`Client "${name}" saved!`);
+    }
+
+    function renderClientDropdown() {
+      const select = document.getElementById('clientPresetSelect');
+      select.innerHTML = '<option value="">-- Load Saved Client --</option>';
+      clientsList.forEach((c, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.innerText = c.name;
+        select.appendChild(opt);
+      });
+    }
+
+    function loadSelectedClient() {
+      const idx = document.getElementById('clientPresetSelect').value;
+      if (idx !== "") {
+        const client = clientsList[idx];
+        document.getElementById('clientName').value = client.name;
+        document.getElementById('clientAddress').value = client.address;
+        document.getElementById('clientTin').value = client.tin;
+      }
+    }
+
+    function saveInvoiceToHistory() {
+      const invNo = document.getElementById('invNo').value;
+      const client = document.getElementById('clientName').value;
+      const date = document.getElementById('invoiceDate').value;
+      const status = document.getElementById('invStatus').value;
+      
+      let subtotal = items.reduce((sum, item) => sum + (item.qty * item.rate), 0);
+      let isVat = document.getElementById('vatToggle').checked;
+      let total = isVat ? subtotal * 1.15 : subtotal;
+
+      const record = { invNo, client, date, total, currency: currentCurrency, status };
+
+      const existingIdx = invoiceHistory.findIndex(h => h.invNo === invNo);
+      if (existingIdx >= 0) {
+        invoiceHistory[existingIdx] = record;
+      } else {
+        invoiceHistory.unshift(record);
+      }
+
+      localStorage.setItem('namibia_invoice_history', JSON.stringify(invoiceHistory));
+      renderHistoryTable();
+      alert(`Invoice ${invNo} saved to history!`);
+    }
+
+    function renderHistoryTable() {
+      const tbody = document.getElementById('historyTableBody');
+      if (invoiceHistory.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="py-3 text-center text-gray-400 text-xs">No saved invoices yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      invoiceHistory.forEach(item => {
+        let statusBadge = item.status === 'Paid' ? 'bg-green-100 text-green-700' : (item.status === 'Sent' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600');
+        const row = document.createElement('tr');
+        row.className = 'border-b hover:bg-gray-50';
+        row.innerHTML = `
+          <td class="py-2.5 font-mono font-medium">${item.invNo}</td>
+          <td class="py-2.5">${item.client}</td>
+          <td class="py-2.5 text-gray-500">${item.date}</td>
+          <td class="py-2.5 text-right font-mono font-semibold">${item.currency} ${item.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+          <td class="py-2.5 text-center"><span class="px-2 py-0.5 rounded text-xs font-semibold ${statusBadge}">${item.status}</span></td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function clearHistory() {
+      if (confirm("Are you sure you want to clear invoice history?")) {
+        invoiceHistory = [];
+        localStorage.removeItem('namibia_invoice_history');
+        renderHistoryTable();
+      }
+    }
+
+    function renderItems() {
+      const tbody = document.getElementById('itemsBody');
+      tbody.innerHTML = '';
+
+      items.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.className = 'border-b border-gray-100';
+        row.innerHTML = `
+          <td class="py-2 px-2">
+            <input type="text" value="${item.description}" onchange="updateItem(${index}, 'description', this.value)" class="w-full outline-none border-b border-transparent hover:border-gray-300 focus:border-blue-500 text-sm">
+          </td>
+          <td class="py-2 px-2 text-center">
+            <input type="number" min="1" value="${item.qty}" onchange="updateItem(${index}, 'qty', this.value)" class="w-16 text-center outline-none border-b border-transparent hover:border-gray-300 focus:border-blue-500 text-sm">
+          </td>
+          <td class="py-2 px-2 text-right">
+            <input type="number" min="0" value="${item.rate}" onchange="updateItem(${index}, 'rate', this.value)" class="w-28 text-right outline-none border-b border-transparent hover:border-gray-300 focus:border-blue-500 text-sm font-mono">
+          </td>
+          <td class="py-2 px-2 text-right font-mono text-sm font-medium">
+            ${currentCurrency} ${(item.qty * item.rate).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          </td>
+          <td class="py-2 px-2 text-center no-print">
+            <button onclick="removeItem(${index})" class="text-red-500 hover:text-red-700 font-bold text-xs">✕</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      calculateTotals();
+    }
+
+    function addItem() {
+      items.push({ description: "New Service Item", qty: 1, rate: 1000 });
+      renderItems();
+    }
+
+    function removeItem(index) {
+      if (items.length > 1) {
+        items.splice(index, 1);
+        renderItems();
+      }
+    }
+
+    function updateItem(index, field, value) {
+      if (field === 'qty' || field === 'rate') {
+        items[index][field] = parseFloat(value) || 0;
+      } else {
+        items[index][field] = value;
+      }
+      renderItems();
+    }
+
+    function calculateTotals() {
+      let subtotal = items.reduce((sum, item) => sum + (item.qty * item.rate), 0);
+      let isVat = document.getElementById('vatToggle').checked;
+      let vatAmount = isVat ? subtotal * 0.15 : 0;
+      let grandTotal = subtotal + vatAmount;
+
+      document.getElementById('subtotalDisplay').innerText = `${currentCurrency} ${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+      document.getElementById('vatDisplay').innerText = `${currentCurrency} ${vatAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+      document.getElementById('grandTotalDisplay').innerText = `${currentCurrency} ${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+
+      document.getElementById('taxCalcGross').innerText = `${currentCurrency} ${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+      
+      let estimatedTaxRate = subtotal > 10000 ? 0.18 : 0.00;
+      let taxSetAside = subtotal * estimatedTaxRate;
+      
+      document.getElementById('taxBracketDisplay').innerText = subtotal > 10000 ? "18% Bracket" : "Exempt / Low";
+      document.getElementById('taxSetAsideDisplay').innerText = `${currentCurrency} ${taxSetAside.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+    }
+  </script>
+</body>
+</html>
