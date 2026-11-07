@@ -244,12 +244,15 @@
 
   <!-- PRO UPGRADE MODAL (MANUAL EFT & VERIFICATION) -->
   <div id="proModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl relative text-left">
       <button type="button" onclick="closeProModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 font-bold">✕</button>
-      <div class="text-center mb-4">
-        <div class="text-3xl mb-1">🏦</div>
-        <h3 class="text-xl font-black text-slate-900">Upgrade to PRO (N$150/mo)</h3>
-        <p class="text-xs text-gray-500 mt-1">Pay securely via EFT or Bank Windhoek / FNB Namibia.</p>
+      
+      <div class="flex items-center gap-3 mb-4">
+        <div class="text-3xl bg-blue-50 p-2 rounded-xl">🏦</div>
+        <div>
+          <h3 class="text-xl font-black text-slate-900">Upgrade to PRO (N$150/mo)</h3>
+          <p class="text-xs text-gray-500">Secure EFT & Bank Windhoek / FNB Namibia Transfer</p>
+        </div>
       </div>
 
       <!-- Bank Details Box -->
@@ -260,19 +263,19 @@
         <div class="flex justify-between"><span class="font-semibold text-gray-600">Reference:</span> <span class="font-bold font-mono text-gray-900" id="eftReferenceText">PRO-[YourEmail]</span></div>
       </div>
 
-      <div class="space-y-3 text-center">
-        <p class="text-xs text-gray-600">After transferring N$150, send your proof of payment via WhatsApp or Email so we can activate your account instantly:</p>
+      <div class="space-y-3">
+        <p class="text-xs text-gray-600">After transferring N$150, send your proof of payment via WhatsApp so we can verify and activate your account:</p>
         
         <a id="whatsappProofBtn" href="https://wa.me/264811234567?text=Hi,%20I%20have%20paid%20N$150%20for%20my%20Invoice%20Tool%20PRO%20subscription.%20My%20email%20is:%20" target="_blank" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow">
           💬 Send Proof of Payment via WhatsApp
         </a>
 
-        <!-- ADMIN BACKDOOR FOR YOU TO ACTIVATE USERS INSTANTLY -->
-        <div class="border-t pt-3 mt-4 text-left">
-          <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Admin Fast-Activation</span>
+        <!-- ADMIN BACKDOOR -->
+        <div class="border-t pt-3 mt-4">
+          <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Admin Fast-Activation (For You)</span>
           <div class="flex gap-2">
-            <input type="password" id="adminPinInput" placeholder="Admin PIN" class="border rounded px-2 py-1 text-xs w-1/2 outline-none">
-            <button type="button" onclick="adminActivatePro()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs px-3 py-1 rounded w-1/2 font-semibold">Unlock PRO</button>
+            <input type="password" id="adminPinInput" placeholder="Admin PIN" class="border rounded px-3 py-1.5 text-xs w-2/3 outline-none focus:ring-1 focus:ring-blue-500">
+            <button type="button" onclick="adminActivatePro()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs px-4 py-1.5 rounded w-1/3 font-semibold shadow">Unlock PRO</button>
           </div>
         </div>
       </div>
@@ -360,7 +363,7 @@
 
     function adminActivatePro() {
       const pin = document.getElementById('adminPinInput').value;
-      if (pin === "2026") { // Set your custom admin PIN here
+      if (pin === "2026") { // Admin PIN
         if (currentUser) {
           currentUser.isPro = true;
           localStorage.setItem('namibia_app_user', JSON.stringify(currentUser));
